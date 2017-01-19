@@ -39,15 +39,23 @@ namespace HLSProxier.Stream
         public Queue<Segment> Segments = new Queue<Segment>();
         public float TargetDuration;
         public uint MediaSequences;
+        public uint AddedSegments;
 
         public HLSProxy(string CacheFolder, int WindowSize)
         {
             this.CacheFolder            = CacheFolder;
             this.WindowSize             = WindowSize;
             this.UnhandledSegments      = 0;
+            this.AddedSegments          = 0;
 
             // - Create cache folder
+            if (Directory.Exists(CacheFolder))
+            {
+                Directory.Delete(CacheFolder, true);
+            }
+
             Directory.CreateDirectory(CacheFolder);
+
         }
 
         public async Task LoadIndexFile(string uri)
@@ -86,7 +94,7 @@ namespace HLSProxier.Stream
 
 
 
-        public async Task CollectsSubsequentSegments(Stream stream)
+        public async Task CollectSubsequentSegments(Stream stream)
         {
 
             if ((DateTime.Now - this.PreviousTime).TotalSeconds < ScheduledTime)
@@ -95,8 +103,11 @@ namespace HLSProxier.Stream
                 return;
             }
 
-            var uri = stream.Uri;
             var start = DateTime.Now;
+
+            var uri = stream.Uri;
+            Console.WriteLine("Requesting: {0}", uri);
+
             // - Temporary save to list
             var temp = new List<Segment>();
 
@@ -138,8 +149,7 @@ namespace HLSProxier.Stream
                         temp.Add(new Segment
                         {
                             Duration = duration,
-                            Uri = url,
-                            Number = Segments.Any() ? Segments.Last().Number + 1: (temp.Any() ? temp.Last().Number + 1 : (uint) 0)
+                            Uri = url
                         });
                     }
                 }
@@ -156,6 +166,7 @@ namespace HLSProxier.Stream
             // - Enque uhandled segments
             foreach (var segment in segments)
             {
+                segment.Number = AddedSegments++;
                 this.Segments.Enqueue(segment);
                 Console.WriteLine("Requesting segment: {0}", segment.Uri);
 
@@ -204,7 +215,7 @@ namespace HLSProxier.Stream
             }
         }
 
-        public async Task CleanCacheFolder()
+        public void CleanCacheFolder()
         {
             var counter = this.Segments.Last().Number - this.WindowSize + 1;
 

@@ -21,7 +21,7 @@ namespace HLSProxier
 
             public async Task Loop()
             {
-                await _hls.CollectsSubsequentSegments(_hls.GetAllStreams().OrderByDescending(x => x.Bandwidth).First());
+                await _hls.CollectSubsequentSegments(_hls.GetAllStreams().OrderByDescending(x => x.Bandwidth).First());
                 await _hls.DumpLatestSegments();
                 _hls.CleanCacheFolder();
             }
