@@ -10,20 +10,19 @@ namespace HSLProxy
     {
         public class Test
         {
-            private readonly HSLProxy HSL = new HSLProxy("Temp");
-
+            private readonly HSLProxy HSL = new HSLProxy("Temp", 3);
 
             public async Task Run()
             {
-                await HSL.LoadEntryFile("http://trtcanlitv-lh.akamaihd.net/i/TRT1HD_1@181842/master.m3u8");
-                await HSL.CollectAllSegments(HSL.GetStreams().Last());
-                HSL.DumpCurrentSegments();
+                await HSL.LoadIndexFile(
+                    "http://mn-i.mncdn.com/haberturk/smil:haberturk.smil/playlist.m3u8?token=12b03adfcca7404e2dbc1bd8cca83645340c5afb45c182c4");
+
             }
 
             public async Task Loop()
             {
-                await HSL.CollectNextSegment(HSL.GetStreams().Last());
-                HSL.DumpLastSegmentIfAvailable();
+                await HSL.CollectsSubsequentSegments(HSL.GetAllStreams().Last());
+                await HSL.DumpLatestSegments();
             }
         }
 
@@ -34,9 +33,8 @@ namespace HSLProxy
             while (true)
             {
                 t.Loop().Wait();
-                Thread.Sleep(new TimeSpan(0,0,0,1));
+                Thread.Sleep(new TimeSpan(0, 0, 0, 0, 100));
             }
-
         }
     }
 }
