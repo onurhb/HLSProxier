@@ -10,7 +10,7 @@ namespace HSLProxy
 {
     public struct Stream
     {
-        public int Banwidth;
+        public int Bandwidth;
         public string Uri;
     }
 
@@ -18,12 +18,13 @@ namespace HSLProxy
     {
         public float Duration;
         public string Uri;
+        public uint Number;
     }
 
     public class HSLProxy
     {
         private readonly List<Stream> Streams = new List<Stream>();
-        private string CacheFolder;
+        private readonly string CacheFolder;
         private Uri Host;
 
         // - Schedule
@@ -41,9 +42,9 @@ namespace HSLProxy
 
         public HSLProxy(string CacheFolder, int WindowSize)
         {
-            this.CacheFolder    = CacheFolder;
-            this.WindowSize     = WindowSize;
-            this.UnhandledSegments = 0;
+            this.CacheFolder            = CacheFolder;
+            this.WindowSize             = WindowSize;
+            this.UnhandledSegments      = 0;
 
             // - Create cache folder
             Directory.CreateDirectory(CacheFolder);
@@ -77,7 +78,7 @@ namespace HSLProxy
                         if (!u.Contains("http")) u = Host.ToString() + '/' + u;
 
                         // - Add all available streams to list
-                        this.Streams.Add(new Stream {Banwidth = Int32.Parse(b), Uri = u});
+                        this.Streams.Add(new Stream {Bandwidth = Int32.Parse(b), Uri = u});
                     }
                 }
             }
@@ -88,16 +89,16 @@ namespace HSLProxy
         public async Task CollectsSubsequentSegments(Stream stream)
         {
 
-            var uri = stream.Uri;
-            var start = DateTime.Now;
-            // - Temporary save to list
-            var temp = new List<Segment>();
-
             if ((DateTime.Now - this.PreviousTime).TotalSeconds < ScheduledTime)
             {
                 this.UnhandledSegments = 0;
                 return;
             }
+
+            var uri = stream.Uri;
+            var start = DateTime.Now;
+            // - Temporary save to list
+            var temp = new List<Segment>();
 
             using (var client = new HttpClient())
             using (var reader = new StringReader(await client.GetStringAsync(uri)))
@@ -137,7 +138,8 @@ namespace HSLProxy
                         temp.Add(new Segment
                         {
                             Duration = duration,
-                            Uri = url
+                            Uri = url,
+                            Number = Segments.Any() ? Segments.Last().Number + 1: (temp.Any() ? temp.Last().Number + 1 : (uint) 0)
                         });
                     }
                 }
@@ -165,6 +167,8 @@ namespace HSLProxy
             this.PreviousTime = DateTime.Now;
             var LostTime = (float) (DateTime.Now - start).TotalSeconds;
             ScheduledTime = this.Segments.Last().Duration - LostTime;
+            Console.WriteLine("Status: Lost Time: ({0}), Scheduled Time: ({1}), Expected Time: ({2})",
+                LostTime, ScheduledTime, this.Segments.Last().Duration);
         }
 
 
@@ -185,18 +189,35 @@ namespace HSLProxy
 
             if (this.UnhandledSegments == 0) return;
 
-            var counter = this.MediaSequences - this.UnhandledSegments + 1;
 
             foreach (var segment in Segments.Reverse().Take((int)this.UnhandledSegments).Reverse())
             {
-                Console.WriteLine("Dumping segment ({0}) to folder ({1})", counter,
+                Console.WriteLine("Dumping segment ({0}) to folder ({1})", segment.Number,
                     CacheFolder);
 
                 var bytes = await GetSegmentContent(segment.Uri);
 
-                using (var stream = new FileStream(CacheFolder + "/" + counter++ + ".ts", FileMode.Create))
+                using (var stream = new FileStream(CacheFolder + "/" + segment.Number + ".ts", FileMode.Create))
                 {
                     await stream.WriteAsync(bytes, 0, bytes.Length);
+                }
+            }
+        }
+
+        public async Task CleanCacheFolder()
+        {
+            var counter = this.Segments.Last().Number - this.WindowSize + 1;
+
+            // - Remove all segments except those within window
+            var di = new DirectoryInfo(CacheFolder);
+
+            foreach (var file in di.GetFiles())
+            {
+                var segmentIndex = Int32.Parse(file.Name.Substring(0, file.Name.IndexOf('.')));
+
+                if (segmentIndex < counter)
+                {
+                    file.Delete();
                 }
             }
         }

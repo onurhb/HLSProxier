@@ -10,7 +10,7 @@ namespace HSLProxy
     {
         public class Test
         {
-            private readonly HSLProxy HSL = new HSLProxy("Temp", 3);
+            private readonly HSLProxy HSL = new HSLProxy("Temp", 10);
 
             public async Task Run()
             {
@@ -21,8 +21,9 @@ namespace HSLProxy
 
             public async Task Loop()
             {
-                await HSL.CollectsSubsequentSegments(HSL.GetAllStreams().Last());
+                await HSL.CollectsSubsequentSegments(HSL.GetAllStreams().OrderByDescending(x => x.Bandwidth).First());
                 await HSL.DumpLatestSegments();
+                HSL.CleanCacheFolder();
             }
         }
 
