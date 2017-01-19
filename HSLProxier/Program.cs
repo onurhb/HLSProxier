@@ -10,20 +10,20 @@ namespace HSLProxy
     {
         public class Test
         {
-            private readonly HSLProxy HSL = new HSLProxy("Temp", 10);
+            private readonly HLSProxy _hls = new HLSProxy("Temp", 10);
 
             public async Task Run()
             {
-                await HSL.LoadIndexFile(
+                await _hls.LoadIndexFile(
                     "http://mn-i.mncdn.com/haberturk/smil:haberturk.smil/playlist.m3u8?token=12b03adfcca7404e2dbc1bd8cca83645340c5afb45c182c4");
 
             }
 
             public async Task Loop()
             {
-                await HSL.CollectsSubsequentSegments(HSL.GetAllStreams().OrderByDescending(x => x.Bandwidth).First());
-                await HSL.DumpLatestSegments();
-                HSL.CleanCacheFolder();
+                await _hls.CollectsSubsequentSegments(_hls.GetAllStreams().OrderByDescending(x => x.Bandwidth).First());
+                await _hls.DumpLatestSegments();
+                _hls.CleanCacheFolder();
             }
         }
 

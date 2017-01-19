@@ -21,7 +21,7 @@ namespace HSLProxy
         public uint Number;
     }
 
-    public class HSLProxy
+    public class HLSProxy
     {
         private readonly List<Stream> Streams = new List<Stream>();
         private readonly string CacheFolder;
@@ -40,7 +40,7 @@ namespace HSLProxy
         public float TargetDuration;
         public uint MediaSequences;
 
-        public HSLProxy(string CacheFolder, int WindowSize)
+        public HLSProxy(string CacheFolder, int WindowSize)
         {
             this.CacheFolder            = CacheFolder;
             this.WindowSize             = WindowSize;
