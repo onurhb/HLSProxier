@@ -1,10 +1,10 @@
 using System;
-using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using HLSProxier.Stream;
 
-namespace HSLProxy
+namespace HLSProxier
 {
     public class Program
     {
