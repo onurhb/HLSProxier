@@ -29,11 +29,14 @@ namespace HLSProxier.Stream
 
         // - Schedule
         private float ScheduledTime;
+
         private DateTime PreviousTime;
 
         // - Helpers
         private uint UnhandledSegments;
+
         private readonly int WindowSize;
+        private string Uri;
 
         // - Segments
         public Queue<Segment> Segments = new Queue<Segment>();
@@ -42,10 +45,12 @@ namespace HLSProxier.Stream
         public uint MediaSequences;
         public uint AddedSegments;
 
-        public HLSProxy(string CacheFolder, int WindowSize)
+        public HLSProxy(string CacheFolder, int WindowSize, string Uri)
         {
             this.CacheFolder = CacheFolder;
             this.WindowSize = WindowSize;
+            this.Uri = Uri;
+
             this.UnhandledSegments = 0;
             this.AddedSegments = 0;
 
@@ -57,18 +62,23 @@ namespace HLSProxier.Stream
                 {
                     file.Delete();
                 }
-            }else{
+            }
+            else
+            {
                 Directory.CreateDirectory(CacheFolder);
             }
         }
 
-        public async Task LoadIndexFile(string uri)
+        public async Task Initialize()
         {
+            this.Streams.Clear();
+
             // - Parse uri
-            this.Host = new Uri(uri.Contains('/') ? uri.Substring(0, uri.LastIndexOf('/') + 1) : uri);
+            this.Host = new Uri(
+                this.Uri.Contains('/') ? this.Uri.Substring(0, this.Uri.LastIndexOf('/') + 1) : this.Uri);
 
             using (var client = new HttpClient())
-            using (var reader = new StringReader(await client.GetStringAsync(uri)))
+            using (var reader = new StringReader(await client.GetStringAsync(this.Uri)))
             {
                 string line;
                 while ((line = reader.ReadLine()) != null)
@@ -134,7 +144,6 @@ namespace HLSProxier.Stream
                             return;
                         }
 
-                        ;
                     }
                     else if (line.Contains("#EXTINF"))
                     {
@@ -172,16 +181,17 @@ namespace HLSProxier.Stream
             }
 
             // - Dump segments
-            if(dump) await DumpLatestSegments();
+            if (dump) await DumpLatestSegments();
 
             // - Calculate timer
             this.PreviousTime = DateTime.Now;
             var SegmentTime = this.Segments.Last().Duration;
             var LostTime = (float) (DateTime.Now - start).TotalSeconds;
-            ScheduledTime =  SegmentTime - LostTime;
+            ScheduledTime = SegmentTime - LostTime;
 
             // - When too much time is used
-            if(ScheduledTime < 0) {
+            if (ScheduledTime < 0)
+            {
                 ScheduledTime = 0;
                 Console.WriteLine("Too much time was consumed downloading and writing segment to ({0})", CacheFolder);
             }
@@ -212,13 +222,12 @@ namespace HLSProxier.Stream
             foreach (var segment in Segments.Skip(Segments.Count() - (int) this.UnhandledSegments))
             {
                 var bytes = await GetSegmentContent(segment.Uri);
-                if(!bytes.Any()) return;
+                if (!bytes.Any()) return;
 
                 using (var stream = new FileStream(CacheFolder + "/" + segment.Number + ".ts", FileMode.Create))
                 {
                     await stream.WriteAsync(bytes, 0, bytes.Length);
                 }
-
             }
         }
 

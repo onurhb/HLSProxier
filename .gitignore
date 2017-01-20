@@ -276,4 +276,5 @@ __pycache__/
 # Cake - Uncomment if you are using it
 # tools/
 
-HLSProxier/Resources/*/*.ts
+HLSProxier/Resources/
+*.ts
