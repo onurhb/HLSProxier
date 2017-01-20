@@ -29,24 +29,27 @@ namespace HLSProxier.Stream
 
         // - Schedule
         private float ScheduledTime;
+
         private DateTime PreviousTime;
 
         // - Helpers
         private uint UnhandledSegments;
+
         private readonly int WindowSize;
 
         // - Segments
         public Queue<Segment> Segments = new Queue<Segment>();
+
         public float TargetDuration;
         public uint MediaSequences;
         public uint AddedSegments;
 
         public HLSProxy(string CacheFolder, int WindowSize)
         {
-            this.CacheFolder            = CacheFolder;
-            this.WindowSize             = WindowSize;
-            this.UnhandledSegments      = 0;
-            this.AddedSegments          = 0;
+            this.CacheFolder = CacheFolder;
+            this.WindowSize = WindowSize;
+            this.UnhandledSegments = 0;
+            this.AddedSegments = 0;
 
             // - Create cache folder
             if (Directory.Exists(CacheFolder))
@@ -55,7 +58,6 @@ namespace HLSProxier.Stream
             }
 
             Directory.CreateDirectory(CacheFolder);
-
         }
 
         public async Task LoadIndexFile(string uri)
@@ -70,33 +72,29 @@ namespace HLSProxier.Stream
                 while ((line = reader.ReadLine()) != null)
                 {
                     // - If stream information
-                    if (line.Contains("#EXT-X-STREAM-INF"))
-                    {
-                        // - Parse bandwidth portion
-                        var b = line.Substring(line.IndexOf("BANDWIDTH="));
+                    if (!line.Contains("#EXT-X-STREAM-INF")) continue;
+                    // - Parse bandwidth portion
+                    var b = line.Substring(line.IndexOf("BANDWIDTH=", StringComparison.Ordinal));
 
-                        b = b.Contains(',')
-                            ? b.Substring(0, b.IndexOf(','))
-                            : b;
+                    b = b.Contains(',')
+                        ? b.Substring(0, b.IndexOf(','))
+                        : b;
 
-                        b = b.Substring(b.IndexOf('=') + 1);
+                    b = b.Substring(b.IndexOf('=') + 1);
 
-                        // - Parse url from next line
-                        var u = reader.ReadLine();
-                        if (!u.Contains("http")) u = Host.ToString() + '/' + u;
+                    // - Parse url from next line
+                    var u = reader.ReadLine();
+                    if (!u.Contains("http")) u = Host.ToString() + '/' + u;
 
-                        // - Add all available streams to list
-                        this.Streams.Add(new Stream {Bandwidth = Int32.Parse(b), Uri = u});
-                    }
+                    // - Add all available streams to list
+                    this.Streams.Add(new Stream {Bandwidth = int.Parse(b), Uri = u});
                 }
             }
         }
 
 
-
         public async Task CollectSubsequentSegments(Stream stream)
         {
-
             if ((DateTime.Now - this.PreviousTime).TotalSeconds < ScheduledTime)
             {
                 this.UnhandledSegments = 0;
@@ -119,12 +117,12 @@ namespace HLSProxier.Stream
                 {
                     if (line.Contains("#EXT-X-TARGETDURATION"))
                     {
-                        var d = Int32.Parse(line.Substring(line.IndexOf(":") + 1));
+                        var d = int.Parse(line.Substring(line.IndexOf(":", StringComparison.Ordinal) + 1));
                         this.TargetDuration = d;
-
-                    }else if (line.Contains("#EXT-X-MEDIA-SEQUENCE"))
+                    }
+                    else if (line.Contains("#EXT-X-MEDIA-SEQUENCE"))
                     {
-                        var d = UInt32.Parse(line.Substring(line.IndexOf(":") + 1));
+                        var d = uint.Parse(line.Substring(line.IndexOf(":", StringComparison.Ordinal) + 1));
                         this.UnhandledSegments = d - this.MediaSequences;
                         this.MediaSequences = d;
 
@@ -133,12 +131,12 @@ namespace HLSProxier.Stream
                         {
                             this.PreviousTime = DateTime.Now;
                             return;
-                        };
-
-                    }else if (line.Contains("#EXTINF"))
+                        }
+                        ;
+                    }
+                    else if (line.Contains("#EXTINF"))
                     {
-
-                        var d = line.Substring(line.IndexOf(":") + 1);
+                        var d = line.Substring(line.IndexOf(":", StringComparison.Ordinal) + 1);
                         if (d.Contains(',')) d = d.Substring(0, d.IndexOf(','));
                         var duration = float.Parse(d, CultureInfo.InvariantCulture);
 
@@ -197,11 +195,9 @@ namespace HLSProxier.Stream
 
         public async Task DumpLatestSegments()
         {
-
             if (this.UnhandledSegments == 0) return;
 
-
-            foreach (var segment in Segments.Reverse().Take((int)this.UnhandledSegments).Reverse())
+            foreach (var segment in Segments.Skip(Segments.Count() - (int) this.UnhandledSegments))
             {
                 Console.WriteLine("Dumping segment ({0}) to folder ({1})", segment.Number,
                     CacheFolder);
@@ -224,7 +220,7 @@ namespace HLSProxier.Stream
 
             foreach (var file in di.GetFiles())
             {
-                var segmentIndex = Int32.Parse(file.Name.Substring(0, file.Name.IndexOf('.')));
+                var segmentIndex = int.Parse(file.Name.Substring(0, file.Name.IndexOf('.')));
 
                 if (segmentIndex < counter)
                 {

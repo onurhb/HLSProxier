@@ -15,7 +15,7 @@ namespace HLSProxier
             public async Task Run()
             {
                 await _hls.LoadIndexFile(
-                    "http://mn-i.mncdn.com/haberturk/smil:haberturk.smil/playlist.m3u8?token=12b03adfcca7404e2dbc1bd8cca83645340c5afb45c182c4");
+                    "http://trtcanlitv-lh.akamaihd.net/i/TRTWORLD_1@321783/master.m3u8");
 
             }
 
@@ -29,7 +29,7 @@ namespace HLSProxier
 
         public static void Main(string[] args)
         {
-            Test t = new Test();
+            var t = new Test();
             t.Run().Wait();
             while (true)
             {
