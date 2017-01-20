@@ -52,10 +52,14 @@ namespace HLSProxier.Stream
             // - Create cache folder
             if (Directory.Exists(CacheFolder))
             {
-                Directory.Delete(CacheFolder, true);
+                var di = new DirectoryInfo(CacheFolder);
+                foreach (var file in di.GetFiles())
+                {
+                    file.Delete();
+                }
+            }else{
+                Directory.CreateDirectory(CacheFolder);
             }
-
-            Directory.CreateDirectory(CacheFolder);
         }
 
         public async Task LoadIndexFile(string uri)
@@ -91,7 +95,7 @@ namespace HLSProxier.Stream
             }
         }
 
-        public async Task CollectSubsequentSegments(Stream stream)
+        public async Task CollectSubsequentSegments(Stream stream, bool dump)
         {
             if ((DateTime.Now - this.PreviousTime).TotalSeconds < ScheduledTime)
             {
@@ -102,7 +106,6 @@ namespace HLSProxier.Stream
             var start = DateTime.Now;
 
             var uri = stream.Uri;
-            Console.WriteLine("Requesting: {0}", uri);
 
             // - Temporary save to list
             var temp = new List<Segment>();
@@ -158,33 +161,45 @@ namespace HLSProxier.Stream
             // - Get only unhandled segments
             var segments = temp.Skip(temp.Count() - (int) this.UnhandledSegments);
 
-            Console.WriteLine("Found ({0}) unhandled segment(s)", this.UnhandledSegments);
-
             // - Enque uhandled segments
             foreach (var segment in segments)
             {
                 segment.Number = AddedSegments++;
                 this.Segments.Enqueue(segment);
-                Console.WriteLine("Requesting segment: {0}", segment.Uri);
 
                 // - Deque a segment if exceeds window size
                 if (this.Segments.Count() > this.WindowSize) this.Segments.Dequeue();
             }
 
+            // - Dump segments
+            if(dump) await DumpLatestSegments();
+
             // - Calculate timer
             this.PreviousTime = DateTime.Now;
+            var SegmentTime = this.Segments.Last().Duration;
             var LostTime = (float) (DateTime.Now - start).TotalSeconds;
-            ScheduledTime = this.Segments.Last().Duration - LostTime;
-            Console.WriteLine("Status: Lost Time: ({0}), Scheduled Time: ({1}), Expected Time: ({2})",
-                LostTime, ScheduledTime, this.Segments.Last().Duration);
+            ScheduledTime =  SegmentTime - LostTime;
+
+            // - When too much time is used
+            if(ScheduledTime < 0) {
+                ScheduledTime = 0;
+                Console.WriteLine("Too much time was consumed downloading and writing segment to ({0})", CacheFolder);
+            }
         }
 
         public async Task<byte[]> GetSegmentContent(string URL)
         {
             using (var client = new HttpClient())
             {
-                var stream = await client.GetByteArrayAsync(URL);
-                if (stream.Length > 0) return stream;
+                try
+                {
+                    var stream = await client.GetByteArrayAsync(URL);
+                    if (stream.Length > 0) return stream;
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+                }
             }
 
             return null;
@@ -196,15 +211,14 @@ namespace HLSProxier.Stream
 
             foreach (var segment in Segments.Skip(Segments.Count() - (int) this.UnhandledSegments))
             {
-                Console.WriteLine("Dumping segment ({0}) to folder ({1})", segment.Number,
-                    CacheFolder);
-
                 var bytes = await GetSegmentContent(segment.Uri);
+                if(!bytes.Any()) return;
 
                 using (var stream = new FileStream(CacheFolder + "/" + segment.Number + ".ts", FileMode.Create))
                 {
                     await stream.WriteAsync(bytes, 0, bytes.Length);
                 }
+
             }
         }
 
