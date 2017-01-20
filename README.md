@@ -1,5 +1,5 @@
 # HLSProxy
-
+*Work in progress* <br />
 HLSProxy is a HLS stream (HTTP Live Stream) proxier that mirrors a hls server. <br />
 Currently, it will download all segments from the HLS server into a cache folder when it should. <br />
 A proxy server will be hosted at http://localhost:8080/.../.../playlist.m3u8 <br />

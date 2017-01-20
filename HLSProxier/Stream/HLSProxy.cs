@@ -29,12 +29,10 @@ namespace HLSProxier.Stream
 
         // - Schedule
         private float ScheduledTime;
-
         private DateTime PreviousTime;
 
         // - Helpers
         private uint UnhandledSegments;
-
         private readonly int WindowSize;
 
         // - Segments
@@ -73,6 +71,7 @@ namespace HLSProxier.Stream
                 {
                     // - If stream information
                     if (!line.Contains("#EXT-X-STREAM-INF")) continue;
+
                     // - Parse bandwidth portion
                     var b = line.Substring(line.IndexOf("BANDWIDTH=", StringComparison.Ordinal));
 
@@ -91,7 +90,6 @@ namespace HLSProxier.Stream
                 }
             }
         }
-
 
         public async Task CollectSubsequentSegments(Stream stream)
         {
@@ -132,6 +130,7 @@ namespace HLSProxier.Stream
                             this.PreviousTime = DateTime.Now;
                             return;
                         }
+
                         ;
                     }
                     else if (line.Contains("#EXTINF"))
@@ -180,7 +179,6 @@ namespace HLSProxier.Stream
                 LostTime, ScheduledTime, this.Segments.Last().Duration);
         }
 
-
         public async Task<byte[]> GetSegmentContent(string URL)
         {
             using (var client = new HttpClient())
@@ -191,7 +189,6 @@ namespace HLSProxier.Stream
 
             return null;
         }
-
 
         public async Task DumpLatestSegments()
         {
@@ -228,7 +225,6 @@ namespace HLSProxier.Stream
                 }
             }
         }
-
 
         // ------------------------------- GETTERS
         public List<Stream> GetAllStreams()
