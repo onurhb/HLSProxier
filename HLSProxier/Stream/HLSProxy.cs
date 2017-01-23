@@ -203,7 +203,7 @@ namespace HLSProxier.Stream
                 foreach (var segment in Segments)
                 {
                     stream.WriteLine("#EXTINF:" + segment.Duration.ToString("0.00", CultureInfo.InvariantCulture));
-                    stream.WriteLine(CacheFolder + "/" + segment.Number + ".ts");
+                    stream.WriteLine(segment.Number + ".ts");
                 }
 
             }
