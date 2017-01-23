@@ -25,7 +25,7 @@ namespace HLSProxier.Stream
 
             this.HLSProxies = HLSProxies;
 
-            Console.Write("Initialized ({0}) tasks", this.HLSProxies.Count());
+            Console.WriteLine("Initialized ({0}) tasks", this.HLSProxies.Count());
 
         }
 
@@ -40,7 +40,8 @@ namespace HLSProxier.Stream
             // - Spread tasks
             await Task.Delay((total > 100 ? 20000 : 5000) * index / total);
 
-            await proxy.Initialize();
+            var success = await proxy.Initialize();
+            if (!success) return;
 
             while (true)
             {

@@ -10,13 +10,14 @@ namespace HLSProxier
         public static void Main(string[] args)
         {
 
-            var sources = new List<HLSProxy>();
-
-            for (var i = 0; i < 250; i++)
+            var sources = new List<HLSProxy>
             {
-                sources.Add(new HLSProxy("Resources/TRT_" + i.ToString(), 5,
-                    "http://trtcanlitv-lh.akamaihd.net/i/TRT1HD_1@181842/master.m3u8"));
-            }
+                new HLSProxy("Resources/TRT_WORLD", 10,
+                    "http://trtcanlitv-lh.akamaihd.net/i/TRTWORLD_1@321783/master.m3u8"),
+                new HLSProxy("Resources/A_Haber", 10,
+                    "http://trkvz-live.ercdn.net/ahaberhd/ahaberhd.m3u8?st=pg-WY98uZ1h4H4UEaNwTPA&e=1485224276")
+            };
+
 
 
             var handler = new HLSHandler(sources);

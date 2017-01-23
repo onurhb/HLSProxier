@@ -24,7 +24,7 @@ namespace HLSProxier.Stream
     public class HLSProxy
     {
         private readonly List<Stream> Streams = new List<Stream>();
-        private readonly string CacheFolder;    // - Folder where segments are cached
+        public readonly string CacheFolder;    // - Folder where segments are cached
         private readonly string StreamFile;
 
         // - Schedule
@@ -33,14 +33,14 @@ namespace HLSProxier.Stream
 
         private uint UnhandledSegments;    // - Unprocessed segments
 
-        private readonly int WindowSize;    // - Window
+        public readonly int WindowSize;    // - Window
         private readonly string IndexURL;  // - Full URL to the first file (master.m3u8)
         private string HostURL;            // - URL to the server hosting the segments and files
 
         // - Segments
-        public Queue<Segment> Segments = new Queue<Segment>();
+        private Queue<Segment> Segments = new Queue<Segment>();
 
-        public float TargetDuration;    // - Maximum segment duration
+        private float TargetDuration;    // - Maximum segment duration
         public uint MediaSequences;    // - How many media segments is currently available at the target source
         public uint AddedSegments;    // - How many segments collected so far
 
@@ -66,7 +66,7 @@ namespace HLSProxier.Stream
             else Directory.CreateDirectory(CacheFolder);
         }
 
-        public async Task Initialize()
+        public async Task<bool> Initialize()
         {
             this.Streams.Clear();
 
@@ -74,9 +74,12 @@ namespace HLSProxier.Stream
             this.HostURL =
                 this.IndexURL.Contains('/') ? this.IndexURL.Substring(0, this.IndexURL.LastIndexOf('/') + 1) : this.IndexURL;
 
+
+            var valid = false;
+
             using (var reader = new StringReader(await GetFileStringAsync(this.IndexURL)))
             {
-                if (reader.Peek() < 0) return;
+                if (reader.Peek() < 0) return false;
 
                 string line;
                 while ((line = reader.ReadLine()) != null)
@@ -99,8 +102,13 @@ namespace HLSProxier.Stream
 
                     // - Add all available streams to list
                     this.Streams.Add(new Stream {Bandwidth = int.Parse(b), Uri = u});
+
+                    valid = true;
+
                 }
             }
+
+            return valid;
         }
 
         public async Task CollectSubsequentSegments(Stream stream, bool dump)
@@ -118,6 +126,7 @@ namespace HLSProxier.Stream
 
             using (var reader = new StringReader(await GetFileStringAsync(stream.Uri)))
             {
+
                 if (reader.Peek() < 0) return;
 
                 string line;
@@ -151,6 +160,8 @@ namespace HLSProxier.Stream
 
                         // - Add all segments to temp
                         temp.Add(new Segment{ Duration = duration, Uri = url});
+
+
                     }
                 }
             }
@@ -218,9 +229,9 @@ namespace HLSProxier.Stream
                     var response = await client.GetByteArrayAsync(URL);
                     if (response.Length > 0) return response;
                 }
-                catch (Exception e)
+                catch
                 {
-                    Console.WriteLine("Error: Failed requesting segment ({0}) for ({1})", AddedSegments + 1, CacheFolder);
+                    Console.WriteLine("Error: Failed requesting segment {0} for ({1})", AddedSegments + 1, CacheFolder);
                 }
             }
 
@@ -236,13 +247,13 @@ namespace HLSProxier.Stream
                     var response = await client.GetStringAsync(URL);
                     if (response.Length > 0) return response;
                 }
-                catch (Exception e)
+                catch
                 {
                     Console.WriteLine("Error: Failed requesting ({0}) for ({1})", URL, CacheFolder);
                 }
             }
 
-            return null;
+            return "";
         }
 
         public async Task DumpLatestSegmentsAsync()
@@ -276,7 +287,14 @@ namespace HLSProxier.Stream
 
                 if (segmentIndex < counter)
                 {
-                    file.Delete();
+                   try
+                   {
+                        file.Delete();
+                   }
+                   catch
+                   {
+                      Console.WriteLine("Failed to delete a segment at ({0})", CacheFolder);
+                   }
                 }
             }
         }
