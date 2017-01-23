@@ -90,9 +90,7 @@ namespace HLSProxier.Stream
                     // - Parse bandwidth portion
                     var b = line.Substring(line.IndexOf("BANDWIDTH=", StringComparison.Ordinal));
 
-                    b = b.Contains(',')
-                        ? b.Substring(0, b.IndexOf(','))
-                        : b;
+                    b = b.Contains(',') ? b.Substring(0, b.IndexOf(',')) : b;
 
                     b = b.Substring(b.IndexOf('=') + 1);
 

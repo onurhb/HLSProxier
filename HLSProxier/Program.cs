@@ -1,6 +1,7 @@
 using System.Collections.Generic;
-using System.Linq;
+using System.IO;
 using HLSProxier.Stream;
+using Microsoft.AspNetCore.Hosting;
 
 namespace HLSProxier
 {
@@ -12,18 +13,24 @@ namespace HLSProxier
 
             var sources = new List<HLSProxy>
             {
-                new HLSProxy("Resources/TRT_WORLD", 10,
+                new HLSProxy("Resources/TRT WORLD", 10,
                     "http://trtcanlitv-lh.akamaihd.net/i/TRTWORLD_1@321783/master.m3u8"),
-                new HLSProxy("Resources/A_Haber", 10,
+                new HLSProxy("Resources/A Haber", 10,
                     "http://trkvz-live.ercdn.net/ahaberhd/ahaberhd.m3u8?st=pg-WY98uZ1h4H4UEaNwTPA&e=1485224276")
             };
 
 
 
-            var handler = new HLSHandler(sources);
+            var handler = new HLSHandler(sources).Run();
 
-            // - Block
-            handler.Run().Wait();
+            var host = new WebHostBuilder()
+                .UseKestrel()
+                .UseContentRoot(Directory.GetCurrentDirectory())
+                .UseIISIntegration()
+                .UseStartup<Startup>()
+                .Build();
+
+            host.Run();
 
         }
 
