@@ -10,29 +10,12 @@ namespace HLSProxier
         public static void Main(string[] args)
         {
 
-            var sources = new List<HLSSource>
+            var sources = new List<HLSProxy>
             {
-                new HLSSource
-                {
-                    CachePath = "Resources/TRT WORLD",
-                    Uri = "http://trtcanlitv-lh.akamaihd.net/i/TRTWORLD_1@321783/master.m3u8",
-                    WindowSize = 5
-                }
+                new HLSProxy("Resources/TRT WORLD", 5, "http://trtcanlitv-lh.akamaihd.net/i/TRTWORLD_1@321783/master.m3u8"),
+                new HLSProxy("Resources/TRT 1", 5, "http://trtcanlitv-lh.akamaihd.net/i/TRT1HD_1@181842/master.m3u8")
+
             };
-
-            // - ~300mbps internet speed is requied to handle this amount of streams!
-            for (var i = 0; i < 250; i++)
-            {
-                var s = sources.First();
-
-                // - Clone first source
-                sources.Add(new HLSSource
-                {
-                    CachePath = s.CachePath + i.ToString(),
-                    Uri = s.Uri,
-                    WindowSize = 5
-                });
-            }
 
 
             var handler = new HLSHandler(sources);

@@ -18,30 +18,21 @@ namespace HLSProxier.Stream
     {
 
         private readonly List<HLSProxy> HLSProxies;
-        public readonly List<Task> TaskList = new List<Task>();
 
 
-        public HLSHandler(IEnumerable<HLSSource> HLSSources){
-            this.HLSProxies = new List<HLSProxy>();
+        public HLSHandler(List<HLSProxy> HLSProxies)
+        {
 
-            foreach (var source in HLSSources)
-            {
-                Console.WriteLine("Initializing ({0})", source.CachePath);
+            this.HLSProxies = HLSProxies;
 
-                HLSProxies.Add(new HLSProxy(source.CachePath, source.WindowSize, source.Uri));
-            }
+            Console.Write("Initialized ({0}) tasks", this.HLSProxies.Count());
+
         }
 
         public async Task Run()
         {
-
             var index = 0;
-            foreach (var proxy in HLSProxies)
-            {
-                TaskList.Add(Runner(proxy, index++, HLSProxies.Count()));
-            }
-
-            await Task.WhenAll(TaskList.ToArray());
+            await Task.WhenAll(HLSProxies.Select(proxy => Runner(proxy, index++, HLSProxies.Count())).ToList());
         }
 
         private static async Task Runner(HLSProxy proxy, int index, int total)

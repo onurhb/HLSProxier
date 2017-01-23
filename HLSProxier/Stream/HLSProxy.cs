@@ -24,32 +24,30 @@ namespace HLSProxier.Stream
     public class HLSProxy
     {
         private readonly List<Stream> Streams = new List<Stream>();
-        private readonly string CacheFolder;
-        private Uri Host;
+        private readonly string CacheFolder;    // - Folder where segments are cached
 
         // - Schedule
         private float ScheduledTime;
-
         private DateTime PreviousTime;
 
-        // - Helpers
-        private uint UnhandledSegments;
+        private uint UnhandledSegments;    // - Unprocessed segments
 
-        private readonly int WindowSize;
-        private string Uri;
+        private readonly int WindowSize;    // - Window
+        private readonly string IndexURL;  // - Full URL to the first file (master.m3u8)
+        private string HostURL;            // - URL to the server hosting the segments and files
 
         // - Segments
         public Queue<Segment> Segments = new Queue<Segment>();
 
-        public float TargetDuration;
-        public uint MediaSequences;
-        public uint AddedSegments;
+        public float TargetDuration;    // - Maximum segment duration
+        public uint MediaSequences;    // - How many media segments is currently available at the target source
+        public uint AddedSegments;    // - How many segments collected so far
 
-        public HLSProxy(string CacheFolder, int WindowSize, string Uri)
+        public HLSProxy(string CacheFolder, int WindowSize, string indexUrl)
         {
             this.CacheFolder = CacheFolder;
             this.WindowSize = WindowSize;
-            this.Uri = Uri;
+            this.IndexURL = indexUrl;
 
             this.UnhandledSegments = 0;
             this.AddedSegments = 0;
@@ -63,10 +61,7 @@ namespace HLSProxier.Stream
                     file.Delete();
                 }
             }
-            else
-            {
-                Directory.CreateDirectory(CacheFolder);
-            }
+            else Directory.CreateDirectory(CacheFolder);
         }
 
         public async Task Initialize()
@@ -74,10 +69,10 @@ namespace HLSProxier.Stream
             this.Streams.Clear();
 
             // - Parse uri
-            this.Host = new Uri(
-                this.Uri.Contains('/') ? this.Uri.Substring(0, this.Uri.LastIndexOf('/') + 1) : this.Uri);
+            this.HostURL =
+                this.IndexURL.Contains('/') ? this.IndexURL.Substring(0, this.IndexURL.LastIndexOf('/') + 1) : this.IndexURL;
 
-            using (var reader = new StringReader(await GetFileStringAsync(this.Uri)))
+            using (var reader = new StringReader(await GetFileStringAsync(this.IndexURL)))
             {
                 string line;
                 while ((line = reader.ReadLine()) != null)
@@ -96,7 +91,7 @@ namespace HLSProxier.Stream
 
                     // - Parse url from next line
                     var u = reader.ReadLine();
-                    if (!u.Contains("http")) u = Host.ToString() + '/' + u;
+                    if (!u.Contains("http")) u = HostURL.ToString() + '/' + u;
 
                     // - Add all available streams to list
                     this.Streams.Add(new Stream {Bandwidth = int.Parse(b), Uri = u});
@@ -135,12 +130,11 @@ namespace HLSProxier.Stream
                         this.UnhandledSegments = d - this.MediaSequences;
                         this.MediaSequences = d;
 
+                        if (this.UnhandledSegments != 0) continue;
+
                         // - Return early if no fresh segments are available
-                        if (this.UnhandledSegments == 0)
-                        {
-                            this.PreviousTime = DateTime.Now;
-                            return;
-                        }
+                        this.PreviousTime = DateTime.Now;
+                        return;
                     }
                     else if (line.Contains("#EXTINF"))
                     {
@@ -149,14 +143,10 @@ namespace HLSProxier.Stream
                         var duration = float.Parse(d, CultureInfo.InvariantCulture);
 
                         var url = reader.ReadLine();
-                        if (!url.Contains("http")) url = Host.ToString() + '/' + url;
+                        if (!url.Contains("http")) url = HostURL + '/' + url;
 
                         // - Add all segments to temp
-                        temp.Add(new Segment
-                        {
-                            Duration = duration,
-                            Uri = url
-                        });
+                        temp.Add(new Segment{ Duration = duration, Uri = url});
                     }
                 }
             }
@@ -178,7 +168,7 @@ namespace HLSProxier.Stream
             }
 
             // - Dump segments
-            if (dump) await DumpLatestSegments();
+            if (dump) await DumpLatestSegmentsAsync();
 
             // - Calculate timer
             this.PreviousTime = DateTime.Now;
@@ -190,7 +180,7 @@ namespace HLSProxier.Stream
             if (ScheduledTime < 0)
             {
                 ScheduledTime = 0;
-                Console.WriteLine("Too much time was consumed downloading and writing segment to ({0})", CacheFolder);
+                Console.WriteLine("Warning: thread is throttling ({0})", CacheFolder);
             }
         }
 
@@ -200,12 +190,12 @@ namespace HLSProxier.Stream
             {
                 try
                 {
-                    var stream = await client.GetByteArrayAsync(URL);
-                    if (stream.Length > 0) return stream;
+                    var response = await client.GetByteArrayAsync(URL);
+                    if (response.Length > 0) return response;
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine("Error: Coul not request segment content ({0})", CacheFolder);
+                    Console.WriteLine("Error: Failed requesting segment content ({0})", CacheFolder);
                 }
             }
 
@@ -218,19 +208,19 @@ namespace HLSProxier.Stream
             {
                 try
                 {
-                    var stream = await client.GetStringAsync(URL);
-                    if (stream.Length > 0) return stream;
+                    var response = await client.GetStringAsync(URL);
+                    if (response.Length > 0) return response;
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine("Error: Coul not request segments file ({0})", CacheFolder);
+                    Console.WriteLine("Error: Failed requesting file ({0}) for ({})", URL, CacheFolder);
                 }
             }
 
             return null;
         }
 
-        public async Task DumpLatestSegments()
+        public async Task DumpLatestSegmentsAsync()
         {
             if (this.UnhandledSegments == 0) return;
 
