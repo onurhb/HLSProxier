@@ -25,6 +25,7 @@ namespace HLSProxier.Stream
     {
         private readonly List<Stream> Streams = new List<Stream>();
         private readonly string CacheFolder;    // - Folder where segments are cached
+        private readonly string StreamFile;
 
         // - Schedule
         private float ScheduledTime;
@@ -47,6 +48,7 @@ namespace HLSProxier.Stream
         {
             this.CacheFolder = CacheFolder;
             this.WindowSize = WindowSize;
+            this.StreamFile = "playlist.m3u8";
             this.IndexURL = indexUrl;
 
             this.UnhandledSegments = 0;
@@ -74,6 +76,8 @@ namespace HLSProxier.Stream
 
             using (var reader = new StringReader(await GetFileStringAsync(this.IndexURL)))
             {
+                if (reader.Peek() < 0) return;
+
                 string line;
                 while ((line = reader.ReadLine()) != null)
                 {
@@ -109,13 +113,13 @@ namespace HLSProxier.Stream
 
             var start = DateTime.Now;
 
-            var uri = stream.Uri;
-
             // - Temporary save to list
             var temp = new List<Segment>();
 
-            using (var reader = new StringReader(await GetFileStringAsync(uri)))
+            using (var reader = new StringReader(await GetFileStringAsync(stream.Uri)))
             {
+                if (reader.Peek() < 0) return;
+
                 string line;
                 while ((line = reader.ReadLine()) != null)
                 {
@@ -184,6 +188,27 @@ namespace HLSProxier.Stream
             }
         }
 
+        public void DumpStreamFile()
+        {
+
+            using(var file = new FileStream(CacheFolder + "/" + StreamFile, FileMode.Create))
+            using(var stream = new StreamWriter(file))
+            {
+                stream.WriteLine("#EXTM3U");
+                stream.WriteLine("#EXT-X-TARGETDURATION:" + TargetDuration);
+                stream.WriteLine("#EXT-X-ALLOW-CACHE:YES");
+                stream.WriteLine("#EXT-X-VERSION:3");
+                stream.WriteLine("#EXT-X-MEDIA-SEQUENCE:" + AddedSegments);
+
+                foreach (var segment in Segments)
+                {
+                    stream.WriteLine("#EXTINF:" + segment.Duration.ToString("0.00", CultureInfo.InvariantCulture));
+                    stream.WriteLine(CacheFolder + "/" + segment.Number + ".ts");
+                }
+
+            }
+        }
+
         private async Task<byte[]> GetSegmentContentAsync(string URL)
         {
             using (var client = new HttpClient())
@@ -195,7 +220,7 @@ namespace HLSProxier.Stream
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine("Error: Failed requesting segment content ({0})", CacheFolder);
+                    Console.WriteLine("Error: Failed requesting segment ({0}) for ({1})", AddedSegments + 1, CacheFolder);
                 }
             }
 
@@ -213,7 +238,7 @@ namespace HLSProxier.Stream
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine("Error: Failed requesting file ({0}) for ({})", URL, CacheFolder);
+                    Console.WriteLine("Error: Failed requesting ({0}) for ({1})", URL, CacheFolder);
                 }
             }
 
@@ -245,6 +270,8 @@ namespace HLSProxier.Stream
 
             foreach (var file in di.GetFiles())
             {
+                if(file.Name.Substring(file.Name.IndexOf('.')) != ".ts") continue;
+
                 var segmentIndex = int.Parse(file.Name.Substring(0, file.Name.IndexOf('.')));
 
                 if (segmentIndex < counter)
