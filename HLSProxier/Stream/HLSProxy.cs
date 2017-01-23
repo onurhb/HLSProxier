@@ -77,8 +77,7 @@ namespace HLSProxier.Stream
             this.Host = new Uri(
                 this.Uri.Contains('/') ? this.Uri.Substring(0, this.Uri.LastIndexOf('/') + 1) : this.Uri);
 
-            using (var client = new HttpClient())
-            using (var reader = new StringReader(await client.GetStringAsync(this.Uri)))
+            using (var reader = new StringReader(await GetFileStringAsync(this.Uri)))
             {
                 string line;
                 while ((line = reader.ReadLine()) != null)
@@ -120,8 +119,7 @@ namespace HLSProxier.Stream
             // - Temporary save to list
             var temp = new List<Segment>();
 
-            using (var client = new HttpClient())
-            using (var reader = new StringReader(await client.GetStringAsync(uri)))
+            using (var reader = new StringReader(await GetFileStringAsync(uri)))
             {
                 string line;
                 while ((line = reader.ReadLine()) != null)
@@ -143,7 +141,6 @@ namespace HLSProxier.Stream
                             this.PreviousTime = DateTime.Now;
                             return;
                         }
-
                     }
                     else if (line.Contains("#EXTINF"))
                     {
@@ -197,7 +194,7 @@ namespace HLSProxier.Stream
             }
         }
 
-        public async Task<byte[]> GetSegmentContent(string URL)
+        private async Task<byte[]> GetSegmentContentAsync(string URL)
         {
             using (var client = new HttpClient())
             {
@@ -208,7 +205,25 @@ namespace HLSProxier.Stream
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine(e);
+                    Console.WriteLine("Error: Coul not request segment content ({0})", CacheFolder);
+                }
+            }
+
+            return null;
+        }
+
+        private async Task<string> GetFileStringAsync(string URL)
+        {
+            using (var client = new HttpClient())
+            {
+                try
+                {
+                    var stream = await client.GetStringAsync(URL);
+                    if (stream.Length > 0) return stream;
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("Error: Coul not request segments file ({0})", CacheFolder);
                 }
             }
 
@@ -221,7 +236,7 @@ namespace HLSProxier.Stream
 
             foreach (var segment in Segments.Skip(Segments.Count() - (int) this.UnhandledSegments))
             {
-                var bytes = await GetSegmentContent(segment.Uri);
+                var bytes = await GetSegmentContentAsync(segment.Uri);
                 if (!bytes.Any()) return;
 
                 using (var stream = new FileStream(CacheFolder + "/" + segment.Number + ".ts", FileMode.Create))
