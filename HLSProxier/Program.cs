@@ -13,10 +13,8 @@ namespace HLSProxier
 
             var sources = new List<HLSProxy>
             {
-                new HLSProxy("Resources/TRT WORLD", 10,
-                    "http://trtcanlitv-lh.akamaihd.net/i/TRTWORLD_1@321783/master.m3u8"),
-                new HLSProxy("Resources/A Haber", 10,
-                    "http://trkvz-live.ercdn.net/ahaberhd/ahaberhd.m3u8?st=pg-WY98uZ1h4H4UEaNwTPA&e=1485224276")
+                new HLSProxy("Resources/SHOW_TV", 100,
+                    "http://mn-i.mncdn.com/showtv_ios/smil:showtv.smil/playlist.m3u8?token=2c6b92c0c9d3d1b72f62d3784923bd796cfb27295723b0c3")
             };
 
 
