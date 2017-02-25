@@ -31,12 +31,12 @@ If you don't want the main thread to exit, simply call `Wait()` on `handler` <br
 > By default, the Kestrel will prevent the main thread from exiting so you don't need to call `Wait()`
 
 The stream will be available at `Resources/TRT WORLD` in the root folder.  <br />
-Use VLC or any supported mediaplayer to stream `http://localhost:5000/Resources/<website> WORLD/playlist.m3u8`.
+Use VLC or any supported mediaplayer to stream `http://localhost:5000/Resources/<website>/playlist.m3u8`.
 
 ## The HLSProxy class 
 
 Caches HLS segments from a single source. <br/>
-The segments are automatically downloaded when it is necessary. 
+The segments are automatically downloaded when a new segment is available. 
 
 > `public HLSProxy(string CacheFolder, int WindowSize, string indexUrl)` <br/>
 > CacheFolder : The folder to cache segments to <br/>
