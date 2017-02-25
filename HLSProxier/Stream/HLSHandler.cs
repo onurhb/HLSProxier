@@ -45,8 +45,8 @@ namespace HLSProxier.Stream
             while (true)
             {
                 await proxy.CollectSubsequentSegments(proxy.GetAllStreams().OrderByDescending(x => x.Bandwidth).First(), true);
-                proxy.CleanCacheFolder();
                 proxy.DumpStreamFile();
+                proxy.CleanCacheFolder();
 
                 // - Sleep a lil bit
                 await Task.Delay(100);

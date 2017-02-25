@@ -176,8 +176,8 @@ namespace HLSProxier.Stream
                 segment.Number = AddedSegments++;
                 this.Segments.Enqueue(segment);
 
-                // - Deque a segment if exceeds window size
-                if (this.Segments.Count() > this.WindowSize) this.Segments.Dequeue();
+                // - Deque a segment if exceeds window size, if not 0 or less 
+                if (this.Segments.Count() > this.WindowSize && this.WindowSize > 0) this.Segments.Dequeue();
             }
 
             // - Dump segments
@@ -272,6 +272,9 @@ namespace HLSProxier.Stream
 
         public void CleanCacheFolder()
         {
+
+            if(this.WindowSize < 1) return;
+
             var counter = this.Segments.Last().Number - this.WindowSize + 1;
 
             // - Remove all segments except those within window
